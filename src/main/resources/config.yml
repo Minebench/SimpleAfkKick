@@ -2,6 +2,7 @@ kick-message: You were kicked for being AFK!
 afk-time: 300 # in seconds
 check-interval: 10 # in seconds
 checks:
+  blocks: true
   move: true
   orientation: true
   interact: true

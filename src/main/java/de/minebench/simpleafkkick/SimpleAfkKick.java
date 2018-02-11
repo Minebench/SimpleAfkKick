@@ -23,6 +23,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
@@ -64,6 +67,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
     
     private BukkitTask checkTask = null;
     
+    private boolean checkBlocks;
     private boolean checkMove;
     private boolean checkSneaking;
     private boolean checkInteract;
@@ -110,6 +114,8 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
         kickMessage = ChatColor.translateAlternateColorCodes('&', getConfig().getString("kick-message"));
         afkTime = getConfig().getInt("afk-time");
         checkInterval = getConfig().getInt("check-interval");
+        
+        checkBlocks = getConfig().getBoolean("check.blocks");
         checkMove = getConfig().getBoolean("check.move");
         checkSneaking = getConfig().getBoolean("check.sneaking");
         checkOrientation = getConfig().getBoolean("check.orientation");
@@ -175,6 +181,31 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
     }
     
     private void registerListeners() {
+        if (checkBlocks) {
+            registerListener(new AdvancedListener() {
+                @EventHandler
+                public void onBlockPlace(BlockPlaceEvent event) {
+                    updateActive(event.getPlayer());
+                }
+    
+                @EventHandler
+                public void onBlockBreak(BlockBreakEvent event) {
+                    updateActive(event.getPlayer());
+                }
+    
+                @EventHandler
+                public void onBlockDamage(BlockDamageEvent event) {
+                    updateActive(event.getPlayer());
+                }
+                
+                @Override
+                public void unregister() {
+                    BlockPlaceEvent.getHandlerList().unregister(this);
+                    BlockBreakEvent.getHandlerList().unregister(this);
+                    BlockDamageEvent.getHandlerList().unregister(this);
+                }
+            });
+        }
         if (checkMove) {
             registerListener(new AdvancedListener() {
                 @EventHandler
