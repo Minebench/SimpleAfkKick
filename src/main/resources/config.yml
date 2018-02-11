@@ -1,0 +1,11 @@
+kick-message: You were kicked for being AFK!
+afk-time: 300 # in seconds
+check-interval: 10 # in seconds
+checks:
+  move: true
+  orientation: true
+  interact: true
+  inventory: true
+  fishing: true
+  commands: true
+  chat : true

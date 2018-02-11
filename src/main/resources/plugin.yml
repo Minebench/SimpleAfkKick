@@ -1,0 +1,19 @@
+name: ${project.name}
+main: de.minebench.simpleafkkick.SimpleAfkKick
+version: '${minecraft.plugin.version}'
+description: ${project.description}
+authors: [Phoenix616]
+commands:
+   simpleafkkick:
+      aliases: [sak]
+      description: The main plugin command.
+      usage: /<command> reload
+      permission: simpleafkkick.command
+      permission-message: You don't have the permission <permission>
+permissions:
+   simpleafkkick.command:
+      description: Gives permission to the plugin command
+      default: op
+   simpleafkkick.bypass:
+      description: Don't get kicked when AFK
+      default: op
