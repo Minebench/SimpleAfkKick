@@ -2,7 +2,7 @@ package de.minebench.simpleafkkick;
 
 /*
  * SimpleAfkKick
- * Copyright (C) 2017 Max Lee (https://github.com/Phoenix616/)
+ * Copyright (C) 2022 Max Lee aka Phoenix616 (max@themoep.de)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,12 +16,15 @@ package de.minebench.simpleafkkick;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDamageEvent;
@@ -58,10 +61,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SimpleAfkKick extends JavaPlugin implements Listener {
     
-    private Set<AdvancedListener> listeners = new HashSet<>();
+    private Set<Listener> listeners = new HashSet<>();
     private Map<UUID, Long> lastActive = new ConcurrentHashMap<>();
     
-    private String kickMessage;
+    private Component kickMessage;
     private int afkTime;
     private int checkInterval;
     
@@ -110,8 +113,13 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
         
         unregisterListeners();
         stopTask();
-        
-        kickMessage = ChatColor.translateAlternateColorCodes('&', getConfig().getString("kick-message"));
+
+        String rawKickMessage = getConfig().getString("kick-message", "lang:multiplayer.disconnect.idling");
+        if (rawKickMessage.startsWith("lang:")) {
+            kickMessage = Component.translatable(rawKickMessage.substring("lang:".length()));
+        } else {
+            kickMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(rawKickMessage);
+        }
         afkTime = getConfig().getInt("afk-time");
         checkInterval = getConfig().getInt("check-interval");
         
@@ -138,7 +146,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                         Player player = getServer().getPlayer(entry.getKey());
                         if (player != null) {
                             if (!player.hasPermission("simpleafkkick.bypass")) {
-                                player.kickPlayer(kickMessage);
+                                player.kick(kickMessage);
                                 it.remove();
                             }
                         } else {
@@ -168,21 +176,21 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 && l1.getBlockZ() == l2.getBlockZ();
     }
     
-    private void registerListener(AdvancedListener listener) {
+    private void registerListener(Listener listener) {
         getServer().getPluginManager().registerEvents(listener, this);
         listeners.add(listener);
     }
     
     private void unregisterListeners() {
-        for (AdvancedListener listener : listeners) {
-            listener.unregister();
+        for (Listener listener : listeners) {
+            HandlerList.unregisterAll(listener);
         }
         listeners.clear();
     }
     
     private void registerListeners() {
         if (checkBlocks) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onBlockPlace(BlockPlaceEvent event) {
                     updateActive(event.getPlayer());
@@ -197,17 +205,10 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 public void onBlockDamage(BlockDamageEvent event) {
                     updateActive(event.getPlayer());
                 }
-                
-                @Override
-                public void unregister() {
-                    BlockPlaceEvent.getHandlerList().unregister(this);
-                    BlockBreakEvent.getHandlerList().unregister(this);
-                    BlockDamageEvent.getHandlerList().unregister(this);
-                }
             });
         }
         if (checkMove) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onMove(PlayerMoveEvent event) {
                     if (!sameBlock(event.getFrom(), event.getTo())) {
@@ -216,28 +217,18 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                         }
                     }
                 }
-        
-                @Override
-                public void unregister() {
-                    PlayerMoveEvent.getHandlerList().unregister(this);
-                }
             });
         }
         if (checkSneaking) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onSneak(PlayerToggleSneakEvent event) {
                     updateActive(event.getPlayer());
                 }
-                
-                @Override
-                public void unregister() {
-                    PlayerToggleSneakEvent.getHandlerList().unregister(this);
-                }
             });
         }
         if (checkInteract) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onInteract(PlayerInteractEvent event) {
                     updateActive(event.getPlayer());
@@ -263,19 +254,10 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 public void onInteract(PlayerBedLeaveEvent event) {
                     updateActive(event.getPlayer());
                 }
-                
-                @Override
-                public void unregister() {
-                    PlayerInteractEvent.getHandlerList().unregister(this);
-                    PlayerInteractEntityEvent.getHandlerList().unregister(this);
-                    PlayerInteractAtEntityEvent.getHandlerList().unregister(this);
-                    PlayerAnimationEvent.getHandlerList().unregister(this);
-                    PlayerBedLeaveEvent.getHandlerList().unregister(this);
-                }
             });
         }
         if (checkInventory) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onInteract(InventoryClickEvent event) {
                     updateActive(event.getWhoClicked());
@@ -315,63 +297,32 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 public void onInteract(PlayerItemHeldEvent event) {
                     updateActive(event.getPlayer());
                 }
-            
-                @Override
-                public void unregister() {
-                    InventoryClickEvent.getHandlerList().unregister(this);
-                    InventoryCreativeEvent.getHandlerList().unregister(this);
-                    InventoryDragEvent.getHandlerList().unregister(this);
-                    InventoryOpenEvent.getHandlerList().unregister(this);
-                    InventoryCloseEvent.getHandlerList().unregister(this);
-                    PlayerDropItemEvent.getHandlerList().unregister(this);
-                    PlayerItemConsumeEvent.getHandlerList().unregister(this);
-                    PlayerItemHeldEvent.getHandlerList().unregister(this);
-                }
             });
         }
         if (checkFishing) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onFish(PlayerFishEvent event) {
                     updateActive(event.getPlayer());
                 }
-                
-                @Override
-                public void unregister() {
-                    PlayerFishEvent.getHandlerList().unregister(this);
-                }
             });
         }
         if (checkCommands) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onCommand(PlayerCommandPreprocessEvent event) {
                     updateActive(event.getPlayer());
                 }
-            
-                @Override
-                public void unregister() {
-                    PlayerCommandPreprocessEvent.getHandlerList().unregister(this);
-                }
             });
         }
         if (checkChat) {
-            registerListener(new AdvancedListener() {
+            registerListener(new Listener() {
                 @EventHandler
                 public void onChat(AsyncPlayerChatEvent event) {
                     updateActive(event.getPlayer());
                 }
-            
-                @Override
-                public void unregister() {
-                    AsyncPlayerChatEvent.getHandlerList().unregister(this);
-                }
             });
         }
-    }
-    
-    private interface AdvancedListener extends Listener {
-        void unregister();
     }
     
 }

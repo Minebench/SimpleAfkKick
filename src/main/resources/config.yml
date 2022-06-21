@@ -1,4 +1,4 @@
-kick-message: You were kicked for being AFK!
+kick-message: "lang:multiplayer.disconnect.idling"
 afk-time: 300 # in seconds
 check-interval: 10 # in seconds
 check:
