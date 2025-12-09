@@ -5,6 +5,8 @@ check:
   blocks: true
   move: true
   orientation: true
+  sneaking: false
+  jumping: false
   interact: true
   inventory: true
   fishing: true

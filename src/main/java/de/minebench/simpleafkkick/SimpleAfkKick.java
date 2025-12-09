@@ -16,6 +16,8 @@ package de.minebench.simpleafkkick;
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import com.destroystokyo.paper.event.player.PlayerJumpEvent;
+import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.ChatColor;
@@ -34,7 +36,6 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerBedLeaveEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
@@ -65,20 +66,8 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
     private Map<UUID, Long> lastActive = new ConcurrentHashMap<>();
     
     private Component kickMessage;
-    private int afkTime;
-    private int checkInterval;
     
     private BukkitTask checkTask = null;
-    
-    private boolean checkBlocks;
-    private boolean checkMove;
-    private boolean checkSneaking;
-    private boolean checkInteract;
-    private boolean checkInventory;
-    private boolean checkCommands;
-    private boolean checkChat;
-    private boolean checkOrientation;
-    private boolean checkFishing;
     
     public void onEnable() {
         loadConfig();
@@ -120,25 +109,16 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
         } else {
             kickMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(rawKickMessage);
         }
-        afkTime = getConfig().getInt("afk-time");
-        checkInterval = getConfig().getInt("check-interval");
-        
-        checkBlocks = getConfig().getBoolean("check.blocks");
-        checkMove = getConfig().getBoolean("check.move");
-        checkSneaking = getConfig().getBoolean("check.sneaking");
-        checkOrientation = getConfig().getBoolean("check.orientation");
-        checkInteract = getConfig().getBoolean("check.interact");
-        checkInventory = getConfig().getBoolean("check.inventory");
-        checkFishing = getConfig().getBoolean("check.fishing");
-        checkCommands = getConfig().getBoolean("check.commands");
-        checkChat = getConfig().getBoolean("check.chat");
-        
-        registerListeners();
-        startTask();
+
+        if (startTask()) {
+            registerListeners();
+        }
     }
     
-    private void startTask() {
+    private boolean startTask() {
+        long checkInterval = getConfig().getLong("check-interval");
         if (checkInterval > 0) {
+            long afkTime = getConfig().getLong("afk-time");
             checkTask = getServer().getScheduler().runTaskTimer(this, () -> {
                 for (Iterator<Map.Entry<UUID, Long>> it = lastActive.entrySet().iterator(); it.hasNext();) {
                     Map.Entry<UUID, Long> entry = it.next();
@@ -155,7 +135,9 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                     }
                 }
             }, checkInterval * 20, checkInterval * 20);
+            return true;
         }
+        return false;
     }
     
     private void stopTask() {
@@ -187,9 +169,13 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
         }
         listeners.clear();
     }
+
+    private boolean shouldCheck(String type) {
+        return getConfig().getBoolean("check." + type);
+    }
     
     private void registerListeners() {
-        if (checkBlocks) {
+        if (shouldCheck("blocks")) {
             registerListener(new Listener() {
                 @EventHandler
                 public void onBlockPlace(BlockPlaceEvent event) {
@@ -207,7 +193,8 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 }
             });
         }
-        if (checkMove) {
+        if (shouldCheck("move")) {
+            boolean checkOrientation = shouldCheck("orientation");
             registerListener(new Listener() {
                 @EventHandler
                 public void onMove(PlayerMoveEvent event) {
@@ -219,7 +206,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 }
             });
         }
-        if (checkSneaking) {
+        if (shouldCheck("sneaking")) {
             registerListener(new Listener() {
                 @EventHandler
                 public void onSneak(PlayerToggleSneakEvent event) {
@@ -227,7 +214,15 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 }
             });
         }
-        if (checkInteract) {
+        if (shouldCheck("jumping")) {
+            registerListener(new Listener() {
+                @EventHandler
+                public void onJump(PlayerJumpEvent event) {
+                    updateActive(event.getPlayer());
+                }
+            });
+        }
+        if (shouldCheck("Interact")) {
             registerListener(new Listener() {
                 @EventHandler
                 public void onInteract(PlayerInteractEvent event) {
@@ -256,7 +251,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 }
             });
         }
-        if (checkInventory) {
+        if (shouldCheck("inventory")) {
             registerListener(new Listener() {
                 @EventHandler
                 public void onInteract(InventoryClickEvent event) {
@@ -299,7 +294,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 }
             });
         }
-        if (checkFishing) {
+        if (shouldCheck("fishing")) {
             registerListener(new Listener() {
                 @EventHandler
                 public void onFish(PlayerFishEvent event) {
@@ -307,7 +302,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 }
             });
         }
-        if (checkCommands) {
+        if (shouldCheck("commands")) {
             registerListener(new Listener() {
                 @EventHandler
                 public void onCommand(PlayerCommandPreprocessEvent event) {
@@ -315,10 +310,10 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                 }
             });
         }
-        if (checkChat) {
+        if (shouldCheck("chat")) {
             registerListener(new Listener() {
                 @EventHandler
-                public void onChat(AsyncPlayerChatEvent event) {
+                public void onChat(AsyncChatEvent event) {
                     updateActive(event.getPlayer());
                 }
             });
