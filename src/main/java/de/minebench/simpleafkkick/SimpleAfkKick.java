@@ -66,6 +66,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
     private Map<UUID, Long> lastActive = new ConcurrentHashMap<>();
     
     private Component kickMessage;
+    private boolean kickOnActive;
     
     private BukkitTask checkTask = null;
     
@@ -92,8 +93,12 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
         lastActive.remove(event.getPlayer().getUniqueId());
     }
     
-    private void updateActive(HumanEntity player) {
-        lastActive.put(player.getUniqueId(), System.currentTimeMillis());
+    private void updateActive(HumanEntity human) {
+        if (kickOnActive && human instanceof Player player && !player.hasPermission("simpleafkkick.bypass")) {
+            player.kick(kickMessage);
+        } else {
+            lastActive.put(human.getUniqueId(), System.currentTimeMillis());
+        }
     }
     
     public void loadConfig() {
@@ -110,6 +115,8 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
             kickMessage = LegacyComponentSerializer.legacyAmpersand().deserialize(rawKickMessage);
         }
 
+        kickOnActive = getConfig().getBoolean("kick-on-active");
+
         if (startTask()) {
             registerListeners();
         }
@@ -125,7 +132,7 @@ public class SimpleAfkKick extends JavaPlugin implements Listener {
                     if (entry.getValue() + afkTime * 1000 < System.currentTimeMillis()) {
                         Player player = getServer().getPlayer(entry.getKey());
                         if (player != null) {
-                            if (!player.hasPermission("simpleafkkick.bypass")) {
+                            if (!player.hasPermission("simpleafkkick.bypass") && !kickOnActive) {
                                 player.kick(kickMessage);
                                 it.remove();
                             }

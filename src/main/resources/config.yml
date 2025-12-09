@@ -1,5 +1,6 @@
 kick-message: "lang:multiplayer.disconnect.idling"
 afk-time: 300 # in seconds
+kick-on-active: false # kick when player becomes active rather than on afk
 check-interval: 10 # in seconds
 check:
   blocks: true
